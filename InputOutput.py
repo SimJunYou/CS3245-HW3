@@ -1,89 +1,13 @@
 import pickle
-import os
 from math import floor, sqrt
 
-# === READING AND MERGING ===
-# merge_block -> Entry point for all merging operations
-# nway_merge -> Merges multiple posting lists into one
+# === READING ===
 # read_posting_list -> Reads a posting list out of a posting list block
 # get_dictionary -> Reads the dictionary file and returns an dictionary
 
 
-def merge_blocks(out_dict, out_postings, block_num):
-    """
-    First, we unpickle all dictionaries to serve as references for our serialized posting lists.
-    Next, we start n-way merging all postings into one (new) dictionary.
-    """
-    print("Starting merge_block")
-
-    # block_num is actually 1 higher than correct, so don't +1 in range
-    dict_f_list = [str(num) + out_dict for num in range(1, block_num)]
-    post_f_list = [str(num) + out_postings for num in range(1, block_num)]
-
-    # union all dictionaries into our new dictionary first
-    # at this stage, dictionary: term -> [(block num, position), ...]
-    dictionary = dict()
-    for i, dict_f in enumerate(dict_f_list):
-        print(f"Merging {dict_f} into new dictionary")
-        # in merging, the dict file only contains the dictionary!
-        # does not have the set of doc ids
-        new_dict = pickle.load(open(dict_f, "rb"))
-        new_keys = set(new_dict.keys())
-        curr_keys = set(dictionary.keys())
-
-        # find existing keys and keys to be added
-        existing, to_add = new_keys & curr_keys, new_keys - curr_keys
-
-        # for each existing key, append it to entry
-        block_index = i
-        for existing_key in existing:
-            dictionary[existing_key].append((block_index, new_dict[existing_key]))
-
-        # for each new (to add) key, make new entry
-        for to_add_key in to_add:
-            dictionary[to_add_key] = [(block_index, new_dict[to_add_key])]
-
-    # in this stage, we convert the dictionary into...
-    # dictionary: term -> merged posting list
-    print(f"Merging all posting lists")
-    post_fp_list = [open(post_f, "r") for post_f in post_f_list]
-    for term in dictionary.keys():
-        entries = dictionary[term]
-        posting_list = nway_merge(post_fp_list, entries)
-        dictionary[term] = posting_list
-    print(f"Total number of terms is {len(dictionary)}")
-    # this function should only be called ONCE... for the merging of all blocks
-    # therefore, we can delete all block files
-    for doc_name in dict_f_list + post_f_list:
-        print(f"Removing {doc_name}")
-        os.remove(doc_name)
-
-    return dictionary
-
-
-def nway_merge(posting_block, entries):
-    """
-    Takes in file pointers to all posting list blocks along with
-    entries (block_num, position) from the merged dictionary.
-    Does n-way merge on all posting lists.
-    Returns a single posting list.
-    """
-    if len(entries) == 1:
-        block_index, pos = entries[0]
-        posting_list = read_posting_list(posting_block[block_index], pos)
-        return [len(posting_list), posting_list]
-
-    all_lists = []
-    for block_index, pos in entries:
-        curr_posting_file = posting_block[block_index]
-        new_posting_list = read_posting_list(curr_posting_file, pos)
-        all_lists.append(new_posting_list)
-
-    posting_list = list(set([item for sublist in all_lists for item in sublist]))
-    return [len(posting_list), posting_list]
-
-
 def read_posting_list(posting_fp, location):
+    # TODO: To be edited for file cursor reading
     """
     Returns a posting list from a posting list file pointer,
     given its location (in characters from start) in the file.
@@ -135,6 +59,7 @@ def get_dict_and_doc_list(out_dict):
 # === WRITING ===
 # write_block -> Writes in-memory dictionary into a block (dictionary + posting files)
 # serialize_posting -> Turns a posting list into a formatted string
+# add_skips_to_posting -> Adds skip pointers to an existing posting list
 
 
 def write_block(
