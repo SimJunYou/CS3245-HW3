@@ -18,6 +18,7 @@ def build_index(in_dir, out_dict, out_postings):
     docs_list = [
         f for f in os.listdir(in_dir) if os.path.isfile(os.path.join(in_dir, f))
     ]
+    docs_list = docs_list[:5]
 
     # === Indexing happens here! ===
     dictionary = dict()
@@ -31,10 +32,15 @@ def build_index(in_dir, out_dict, out_postings):
             break
 
         if term in dictionary:
-            dictionary[term][0] += 1
-            dictionary[term][1].add(doc_id)
+            # term_dict contains a mapping of doc_id -> term_freq
+            # one term_dict is held for each term
+            term_dict = dictionary[term]
+            if doc_id in term_dict:
+                dictionary[term][doc_id] += 1
+            else:
+                dictionary[term][doc_id] = 1
         else:
-            dictionary[term] = [1, set([doc_id])]
+            dictionary[term] = {doc_id: 1}
 
     # we write the final posting list and dictionary to disk
     # we will write skip pointers also into the posting list at this step
