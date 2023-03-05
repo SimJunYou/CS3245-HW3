@@ -1,7 +1,7 @@
 from InputOutput import read_posting_list, add_skips_to_posting
 
 
-def process_query(query, dictionary, all_doc_ids, postings_file):
+def process_query(query, dictionary, docs_dict, postings_file):
     """
     Generates an in-memory index, containing only terms found in the query.
     Converts the query into a nested operator form (see below).
@@ -22,7 +22,7 @@ def process_query(query, dictionary, all_doc_ids, postings_file):
     # if it is an operator, call resolve on the outermost operator
     # to recursively resolve all inner operators
     if isinstance(wrapped, Operator):
-        return wrapped.resolve(index, all_doc_ids)
+        return wrapped.resolve(index, docs_dict)
 
     # otherwise, it will be a (term, doc freq) tuple
     # just return the posting list

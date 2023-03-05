@@ -4,7 +4,7 @@ import nltk
 import sys
 import getopt
 from Parser import read_and_parse_queries
-from InputOutput import get_dict_and_doc_list
+from InputOutput import unpickle_dict_file
 from Searcher import process_query
 
 
@@ -23,7 +23,7 @@ def run_search(dict_file, postings_file, queries_file, results_file):
     """
     print("running search on the queries...")
 
-    dictionary, all_doc_ids = get_dict_and_doc_list(dict_file)
+    dictionary, docs_dict = unpickle_dict_file(dict_file)
     queries = read_and_parse_queries(queries_file, postings_file, dictionary)
     with open(results_file, "w") as of:
         for query in queries:
@@ -34,7 +34,7 @@ def run_search(dict_file, postings_file, queries_file, results_file):
             # process query, remove skip pointers, sort, convert to string
             # if there is an error, print an error line to the output file
             try:
-                result = process_query(query, dictionary, all_doc_ids, postings_file)
+                result = process_query(query, dictionary, docs_dict, postings_file)
                 result = list(
                     map(lambda x: x[0] if isinstance(x, tuple) else x, result)
                 )

@@ -5,21 +5,22 @@ import string
 STEMMER = nltk.stem.porter.PorterStemmer()
 
 
-def make_pair_generator(in_dir, docs_list):
+def make_doc_read_generator(in_dir, docs_list):
     """
-    Generator function for the next (term, doc_id) pair.
-    Call this function to make the generator first, then use next() to generate the next pair.
-    Yields (None, None) when done.
+    Generator function for the next (term, doc_length, doc_id) tuple.
+    Call this function to make the generator first, then use next() to generate the next tuple.
+    Yields (None, None, None) when done.
     """
     for doc_name in docs_list:
         doc_path = os.path.join(in_dir, doc_name)
         doc = read_and_clean(doc_path)
         tokens = tokenize(doc)
-        # for this assignment, we can assume that document
-        # names are integers without exception
+        doc_length = len(tokens)
+        # for this assignment, we can assume that document names are integers without exception
+        # since we are using a generator, we only count the number of tokens once per file
         for tok in tokens:
-            yield tok, int(doc_name)
-    yield None, None
+            yield tok, doc_length, int(doc_name)
+    yield None, None, None
 
 
 def read_and_clean(doc_path):

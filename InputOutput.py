@@ -85,50 +85,53 @@ class PostingReader:
         return self._done
 
 
+def unpickle_dict_file(out_dict):
+    """
+    Returns the (dictionary, docs_dict) tuple.
+    dictionary is the dictionary mapping term to location in postings file.
+    docs_dict is the dictionary mapping doc_id to doc_length.
+    """
+    return pickle.load(open(out_dict, "rb"))
+
+
 # === WRITING ===
 # write_block -> Writes in-memory dictionary into a block (dictionary + posting files)
 # serialize_posting -> Turns a posting list into a formatted string
 
 
-def write_block(
-    dictionary, out_dict, out_postings, docs_list=[], block_num="", write_skips=False
-):
+def write_block(dictionary, out_dict, out_postings, docs_dict, write_skips=False):
     """
     For each (term, posting list) pair in the dictionary...
 
-    Each posting list is in the following format: Dict[doc_id -> term_freq]
-
-    We serialize each posting list using serialize_posting into a string.
+    Each posting list is in the following format: [Dict[doc_id -> term_freq], doc_length]
+    We extract the Dict and pass it to serialize_posting, which returns a string.
     The serialized posting list is written into the postings file.
     We count the number of characters written so far as cumulative_ptr.
 
-    As each term is written, we write the (term, cumulative_ptr) pair into index.
+    As each term is written, we write the (term -> cumulative_ptr) pair into final_dict.
     The cumulative_ptr can be used to directly grab a posting list from the postings file.
 
-    The (list of all documents, index) tuple is written into the dictionary file using pickle.
+    The dictionary mapping doc_id to doc_length is made in the top-level index.py entry method,
+    and is passed in here via docs_dict.
+
+    The (final_dict, docs_dict) tuple is written into the dictionary file using pickle.
     """
-    index = dict()
+    final_dict = dict()
     cumulative_ptr = 0
 
-    with open(str(block_num) + out_postings, "w") as postings_fp:
+    with open(out_postings, "w") as postings_fp:
         for term, posting_list in dictionary.items():
             posting_list_serialized = serialize_posting(posting_list, write_skips)
-            index[term] = cumulative_ptr
+            final_dict[term] = cumulative_ptr
             cumulative_ptr += len(posting_list_serialized)
             print(posting_list_serialized)
             postings_fp.write(posting_list_serialized)
 
     # we want to store the docs_list with each doc as a set of integers
-    if docs_list:
-        docs_list = set(map(int, docs_list))
-        pickle.dump((index, docs_list), open(str(block_num) + out_dict, "wb"))
-    else:
-        pickle.dump(index, open(str(block_num) + out_dict, "wb"))
+    docs_list = set(map(int, docs_list))
+    pickle.dump((final_dict, docs_dict), open(out_dict, "wb"))
 
-    if block_num:
-        print(f"Wrote {len(dictionary)} terms into block number {block_num}")
-    else:
-        print(f"Wrote {len(dictionary)} terms into final files")
+    print(f"Wrote {len(dictionary)} terms into final files")
 
 
 def serialize_posting(posting_list, write_skips):

@@ -5,7 +5,7 @@ import getopt
 
 # SELF-WRITTEN MODULES
 from InputOutput import write_block
-from Tokenizer import make_pair_generator
+from Tokenizer import make_doc_read_generator
 
 
 def build_index(in_dir, out_dict, out_postings):
@@ -20,12 +20,16 @@ def build_index(in_dir, out_dict, out_postings):
     ]
     docs_list = docs_list[:5]
 
+    # we want to capture all document IDs and each document's length
+    # we can do that using a dictionary mapping doc_id to doc_length
+    docs_dict = {doc_id: 0 for doc_id in docs_list}
+
     # === Indexing happens here! ===
     dictionary = dict()
-    pair_generator = make_pair_generator(in_dir, docs_list)
+    pair_generator = make_doc_read_generator(in_dir, docs_list)
 
     while True:
-        term, doc_id = next(pair_generator)
+        term, doc_length, doc_id = next(pair_generator)
 
         # if we have run out of terms, we stop building index
         if term is None and doc_id is None:
@@ -41,6 +45,7 @@ def build_index(in_dir, out_dict, out_postings):
                 dictionary[term][doc_id] = 1
         else:
             dictionary[term] = {doc_id: 1}
+            docs_dict[doc_id] = doc_length  # update doc length
 
     # we write the final posting list and dictionary to disk
     # we will write skip pointers also into the posting list at this step
