@@ -1,0 +1,10 @@
+Assets AND of AND money AND market OR immediately
+Assets AND of AND money AND market AND mutual AND funds
+company AND said AND any AND decline AND would AND be AND due AND to AND expenses OR Assets AND of AND money AND market AND mutual AND funds
+japan AND sushi
+japan AND zurich
+
+copper AND nickel
+gold AND platinum
+(copper AND nickel) OR (gold AND platinum)
+(copper AND nickel) AND (gold AND platinum)
