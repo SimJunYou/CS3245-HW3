@@ -4,7 +4,7 @@ import nltk
 import sys
 import getopt
 from Parser import read_and_parse_queries
-from InputOutput import unpickle_dict_file
+from InputOutput import unpickle_file
 from Searcher import process_query
 
 
@@ -23,26 +23,24 @@ def run_search(dict_file, postings_file, queries_file, results_file):
     """
     print("running search on the queries...")
 
-    dictionary, docs_dict = unpickle_dict_file(dict_file)
-    queries = read_and_parse_queries(queries_file, postings_file, dictionary)
+    dictionary = unpickle_file(dict_file)
+    docs_len_dct = unpickle_file("lengths.txt")  # FIXME: Don't hardcode file name?
+    queries = read_and_parse_queries(queries_file)
+
     with open(results_file, "w") as of:
         for query in queries:
             # if query is empty, print blank line and continue
             if not query:
                 print("", file=of)
                 continue
-            # process query, remove skip pointers, sort, convert to string
+            # process query, convert to string
             # if there is an error, print an error line to the output file
-            try:
-                result = process_query(query, dictionary, docs_dict, postings_file)
-                result = list(
-                    map(lambda x: x[0] if isinstance(x, tuple) else x, result)
-                )
-                result = sorted(result)
-                result = ",".join(map(str, result))
-                print(result, file=of)
-            except:
-                print("Error processing query", file=of)
+            # try:
+            result = process_query(query, dictionary, docs_len_dct, postings_file)
+            result = " ".join(map(str, result))
+            print(result, file=of)
+            # except:
+            #     print("Error processing query", file=of)
 
 
 dictionary_file = postings_file = file_of_queries = output_file_of_results = None

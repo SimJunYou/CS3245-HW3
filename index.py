@@ -2,6 +2,7 @@
 import os
 import sys
 import getopt
+from math import log10
 
 # SELF-WRITTEN MODULES
 from InputOutput import write_block
@@ -18,40 +19,63 @@ def build_index(in_dir, out_dict, out_postings):
     docs_list = [
         f for f in os.listdir(in_dir) if os.path.isfile(os.path.join(in_dir, f))
     ]
-    docs_list = docs_list[:5]
 
     # we want to capture all document IDs and each document's length
     # we can do that using a dictionary mapping doc_id to doc_length
-    docs_dict = {doc_id: 0 for doc_id in docs_list}
+    docs_len_dct = {}
 
     # === Indexing happens here! ===
     dictionary = dict()
     pair_generator = make_doc_read_generator(in_dir, docs_list)
 
+    current_doc = None
+    term_freq_counter = dict()
     while True:
         term, doc_length, doc_id = next(pair_generator)
 
         # if we have run out of terms, we stop building index
         if term is None and doc_id is None:
+            # we have one last document's length to calculate!
+            # calc length and save to old doc's ID in docs_len_dct
+            doc_length = 0
+            for count in term_freq_counter.values():
+                doc_length += (1 + log10(count)) ** 2
+            docs_len_dct[current_doc] = doc_length**0.5
             break
 
+        # if we encounter a new document, update docs_len_dct with the calculated
+        # doc length and reset term_freq_counter
+        if current_doc != doc_id:
+            # calc length and save to old doc's ID in docs_len_dct
+            doc_length = 0
+            for count in term_freq_counter.values():
+                doc_length += (1 + log10(count)) ** 2
+            docs_len_dct[current_doc] = doc_length**0.5
+            # then, reset counter and update current_doc
+            current_doc = doc_id
+            term_freq_counter = dict()
+
+        # count occurrences of each term in each document
+        if term in term_freq_counter:
+            term_freq_counter[term] += 1
+        else:
+            term_freq_counter[term] = 1
+
+        # update our dictionary of term -> posting lists
         if term in dictionary:
-            # term_dict contains a mapping of doc_id -> term_freq
-            # one term_dict is held for each term
-            term_dict = dictionary[term]
-            if doc_id in term_dict:
+            # posting_list contains a mapping of doc_id -> term_freq
+            # one posting_list is held for each term
+            posting_list = dictionary[term]
+            if doc_id in posting_list:
                 dictionary[term][doc_id] += 1
             else:
                 dictionary[term][doc_id] = 1
         else:
             dictionary[term] = {doc_id: 1}
-            docs_dict[doc_id] = doc_length  # update doc length
 
     # we write the final posting list and dictionary to disk
-    # we will write skip pointers also into the posting list at this step
-    write_block(
-        dictionary, out_dict, out_postings, docs_list=docs_list, write_skips=True
-    )
+    # since we have no more intersects, we will not use skip pointers anymore
+    write_block(dictionary, out_dict, out_postings, docs_len_dct, write_skips=False)
 
 
 def usage():

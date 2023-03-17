@@ -9,26 +9,40 @@ from math import floor, sqrt
 class PostingReader:
     """
     An interface for a posting list reading.
-    Automatically grabs the doc frequency (the first entry) upon init.
-    Has helper methods like .read_entry(), .skip(), etc.
+    Keeps the dictionary within itself, so accessing the posting list of
+    any given term is as easy as ".seek_term('term')".
+    Automatically grabs the doc frequency (the first entry) upon seeking.
+    Has helper methods like .read_entry(), .is_done(), etc.
     Should be used with a context manager (i.e. 'with' blocks) for
     automatic initialisation and closing of files.
     """
 
-    def __init__(self, file, location):
-        self.file = file
-        self.location = location
+    def __init__(self, file, dct):
+        self._fname = file
+        self._dct = dct
+        self._loc = 0
 
     def __enter__(self):
-        self._f = open(self.file, "r")
-        self._f.seek(self.location, 0)
+        self._f = open(self._fname, "r")
+        return self
+
+    def seek_term(self, term):
+        """
+        To be used right after entering the context manager!
+        Seeks file to the desired term and returns the document frequency.
+        """
+
+        # we should be checking that terms are in dictionary in process_query
+        assert term in self._dct, "Term not found in dictionary!"
+
+        self._f.seek(self._dct[term], 0)
 
         # get document frequency
         doc_freq_str = char = ""
         while char != "$":
             doc_freq_str += char
             char = self._f.read(1)
-        self._docfreq = int(doc_freq_str)
+        doc_freq = int(doc_freq_str)
 
         # flag for completing the reading of the given posting list
         self._done = False
@@ -38,7 +52,7 @@ class PostingReader:
         # save location after reading the document frequency
         self._loc = self._f.tell()
 
-        return self
+        return doc_freq
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         # parameters here are required by Python, we won't use them
@@ -48,8 +62,7 @@ class PostingReader:
         """
         Using the current position of the instance's file pointer,
         read the next entry in the posting list and return it as a tuple:
-        >> (doc_id, term_freq, skip)
-        Skip will be -1 if there is no skip pointer.
+        >> (doc_id, term_freq)
         """
         # throw error if we're trying to read a completely read posting list
         assert not self._done, "Reading of posting list is already complete!"
@@ -65,33 +78,22 @@ class PostingReader:
             self._done = True  # update flag if the posting list is done
 
         doc_id, term_freq = entry.split("*")
-        skip = -1
-        if "^" in term_freq:
-            term_freq, skip = term_freq.split("^")
 
         self._loc = self._f.tell()
 
         # return a integer tuple
-        return (int(doc_id), int(term_freq), int(skip))
-
-    def skip(self, skip_amt):
-        self._f.seek(self._loc + skip_amt, 0)
-        self._loc = self._f.tell()
-
-    def get_doc_freq(self):
-        return self._docfreq
+        return (int(doc_id), int(term_freq))
 
     def is_done(self):
         return self._done
 
 
-def unpickle_dict_file(out_dict):
+def unpickle_file(filename):
     """
-    Returns the (dictionary, docs_dict) tuple.
-    dictionary is the dictionary mapping term to location in postings file.
-    docs_dict is the dictionary mapping doc_id to doc_length.
+    Just unpickles a file. Putting this here since I don't want to import
+    pickle elsewhere!
     """
-    return pickle.load(open(out_dict, "rb"))
+    return pickle.load(open(filename, "rb"))
 
 
 # === WRITING ===
@@ -99,7 +101,7 @@ def unpickle_dict_file(out_dict):
 # serialize_posting -> Turns a posting list into a formatted string
 
 
-def write_block(dictionary, out_dict, out_postings, docs_dict, write_skips=False):
+def write_block(dictionary, out_dict, out_postings, docs_len_dct, write_skips=False):
     """
     For each (term, posting list) pair in the dictionary...
 
@@ -112,9 +114,9 @@ def write_block(dictionary, out_dict, out_postings, docs_dict, write_skips=False
     The cumulative_ptr can be used to directly grab a posting list from the postings file.
 
     The dictionary mapping doc_id to doc_length is made in the top-level index.py entry method,
-    and is passed in here via docs_dict.
+    and is passed in here via docs_len_dct.
 
-    The (final_dict, docs_dict) tuple is written into the dictionary file using pickle.
+    The (final_dict, docs_len_dct) tuple is written into the dictionary file using pickle.
     """
     final_dict = dict()
     cumulative_ptr = 0
@@ -124,12 +126,12 @@ def write_block(dictionary, out_dict, out_postings, docs_dict, write_skips=False
             posting_list_serialized = serialize_posting(posting_list, write_skips)
             final_dict[term] = cumulative_ptr
             cumulative_ptr += len(posting_list_serialized)
-            print(posting_list_serialized)
             postings_fp.write(posting_list_serialized)
 
-    # we want to store the docs_list with each doc as a set of integers
-    docs_list = set(map(int, docs_list))
-    pickle.dump((final_dict, docs_dict), open(out_dict, "wb"))
+    pickle.dump(final_dict, open(out_dict, "wb"))
+    pickle.dump(
+        docs_len_dct, open("lengths.txt", "wb")
+    )  # FIXME: Don't hardcode file name?
 
     print(f"Wrote {len(dictionary)} terms into final files")
 
@@ -181,8 +183,3 @@ def serialize_posting(posting_list, write_skips):
 
     output = f"{str(len(posting_list))}${output}"  # add in doc freq
     return output
-
-
-with PostingReader("postings.txt", 41) as tmp:
-    while not tmp.is_done():
-        print(tmp.read_entry())
