@@ -3,13 +3,9 @@ from Tokenizer import tokenize
 
 def read_and_parse_queries(queries_file):
     """
-    Entry point for all the query reading/parsing functions.
-    Also cleans operands by case-folding and stemming them.
-    Dictionary and postings file are included so we can get the document frequencies.
-    Takes in queries file, returns list of cleaned parsed queries each in postfix order.
-
-    The final list contains either operators (in integer order form),
-    or operands in the following tuple: (operand, freq)
+    Reads and tokenizes queries. Within the tokenization step, preprocessing
+    like case folding and stemming is also done.
+    Returns a list of queries, where each query is a list of tokens.
     """
 
     queries = read_queries(queries_file)

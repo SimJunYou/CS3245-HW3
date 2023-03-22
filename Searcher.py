@@ -3,7 +3,11 @@ from math import log10
 
 
 def process_query(query, dictionary, docs_len_dct, postings_file):
-
+    """
+    Using the PostingReader interface, process a given query by calculating
+    scores for each document from its posting list, then return at most 10
+    document IDs with the highest scores.
+    """
     all_query_terms = set(query)
     dictionary_terms = set(dictionary.keys())
     query_terms = all_query_terms & dictionary_terms
@@ -28,9 +32,9 @@ def process_query(query, dictionary, docs_len_dct, postings_file):
         for query_term in query_terms:
             q_score_dct[query_term] = calc_query_tfidf(query_term, query, N, pf)
 
+    # calculate the final scores for each document
     scores = []
     for doc_id in d_score_dct.keys():
-
         dot_prod = 0
         for t in query_terms:
             d_score = d_score_dct[doc_id].get(t, 0)
@@ -39,6 +43,10 @@ def process_query(query, dictionary, docs_len_dct, postings_file):
         score = dot_prod / docs_len_dct[doc_id]
         scores.append((doc_id, score))
 
+    # sort by ascending document ID first, then by descending score
+    # since Python's sort is stable, we end up with a list sorted by
+    # descending scores and tie-broken by ascending document IDs
+    # return the top 10 in the list
     scores = sorted(scores, key=lambda x: x[0])
     scores = sorted(scores, key=lambda x: x[1], reverse=True)[:10]
 

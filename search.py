@@ -1,8 +1,8 @@
 #!/usr/bin/python3
-import re
-import nltk
 import sys
 import getopt
+
+# SELF-WRITTEN MODULES
 from Parser import read_and_parse_queries
 from InputOutput import unpickle_file
 from Searcher import process_query
@@ -35,12 +35,12 @@ def run_search(dict_file, postings_file, queries_file, results_file):
                 continue
             # process query, convert to string
             # if there is an error, print an error line to the output file
-            # try:
-            result = process_query(query, dictionary, docs_len_dct, postings_file)
-            result = " ".join(map(str, result))
-            print(result, file=of)
-            # except:
-            #     print("Error processing query", file=of)
+            try:
+                result = process_query(query, dictionary, docs_len_dct, postings_file)
+                result = " ".join(map(str, result))
+                print(result, file=of)
+            except:
+                print("Error processing query", file=of)
 
 
 dictionary_file = postings_file = file_of_queries = output_file_of_results = None

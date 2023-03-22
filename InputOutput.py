@@ -139,8 +139,9 @@ def write_block(dictionary, out_dict, out_postings, docs_len_dct, write_skips=Fa
 def serialize_posting(posting_list, write_skips):
     """
     Turns a posting list into a string, and returns the string.
-    The string format is: "(freq)$(id1*tf1),(id2*tf2^skip),(...),(idn*tfn)|".
-    Skip denotes how many characters to skip to get to the next skip number.
+    The string format is: "(freq)$(id1*tf1),(id2*tf2),(...),(idn*tfn)|".
+    (where idn is the nth document ID and tfn is the term frequency of the nth document)
+    The "*" denotes the delimiter between the document ID and the term frequency.
     The "|" is the terminator character for the serialization.
     """
     # convert the dictionary into a list of tuples (doc_id, term_freq)
